@@ -7,7 +7,10 @@ import {
   Image,
   ScrollView,
 } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
+import {
+  NavigationContainer,
+  getFocusedRouteNameFromRoute,
+} from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import Ionicons from "react-native-vector-icons/Ionicons";
@@ -39,14 +42,14 @@ function LibraryStackScreen() {
         headerTitleStyle: {
           fontWeight: "bold",
         },
-        headerBackTitleVisible: false, // Hide the back title if needed
-        headerTitleAlign: 'center', // Center align the title
+        headerBackTitleVisible: false,
+        headerTitleAlign: "center",
       }}
     >
       <LibraryStack.Screen
         name="LibraryHome"
         component={LibraryScreen}
-        options={{ title: 'Library' }}
+        options={{ title: "Library" }}
       />
       <LibraryStack.Screen
         name="Song"
@@ -58,7 +61,6 @@ function LibraryStackScreen() {
     </LibraryStack.Navigator>
   );
 }
-
 
 export default function App() {
   return (
@@ -87,7 +89,18 @@ export default function App() {
           //   headerTitle: (props) => <LogoTitle {...props} />,
           // }}
         />
-        <Tab.Screen name="Library" component={LibraryStackScreen} />
+        <Tab.Screen
+          name="Library"
+          component={LibraryStackScreen}
+          options={({ route }) => {
+            const routeName = getFocusedRouteNameFromRoute(route) ?? "";
+            return {
+              tabBarStyle: {
+                display: routeName === "Song" ? "none" : "flex",
+              },
+            };
+          }}
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );
