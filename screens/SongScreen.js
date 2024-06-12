@@ -1,40 +1,55 @@
-import React from "react";
-import { Text, View, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useState } from "react";
+import { Text, View, ScrollView, StyleSheet, TextInput, TouchableOpacity } from "react-native";
 
 const LyricsChordsDisplay = ({ lyricsAndChords, styles }) => {
+  const [lines, setLines] = useState(lyricsAndChords);
+
+  const handleWordChange = (text, lineIndex, wordIndex) => {
+    const updatedLines = [...lines];
+    updatedLines[lineIndex][wordIndex].word = text;
+    setLines(updatedLines);
+  };
+
+  const handleChordChange = (text, lineIndex, wordIndex, chordIndex) => {
+    const updatedLines = [...lines];
+    updatedLines[lineIndex][wordIndex].chords[chordIndex] = text;
+    setLines(updatedLines);
+  };
+
+  const addChord = (lineIndex, wordIndex) => {
+    const updatedLines = [...lines];
+    updatedLines[lineIndex][wordIndex].chords.push("");
+    setLines(updatedLines);
+  };
+
   return (
     <View style={styles.lyricsContainer}>
-      {lyricsAndChords.map((line, lineIndex) => {
-        let currentIndex = 0;
-        const chordsLine = [];
-        let previousIndex = 0;
-
-        line.chords.forEach((chord, chordIndex) => {
-          // Calculate spaces before the chord
-          const spacesCount = Math.max(chord.index - previousIndex, 0);
-          const spaces = ' '.repeat(spacesCount);
-          chordsLine.push(
-            <Text key={`space-${lineIndex}-${chordIndex}`} style={styles.chordPlaceholder}>{spaces}</Text>
-          );
-          chordsLine.push(
-            <TouchableOpacity key={`chord-${lineIndex}-${chordIndex}`} style={styles.chordContainer} onPress={() => alert(chord.chord)}>
-              <Text style={styles.chord}>{chord.chord}</Text>
-            </TouchableOpacity>
-          );
-          previousIndex = chord.index + chord.chord.length;
-        });
-
-        return (
-          <View key={lineIndex} style={styles.lineContainer}>
-            <View style={styles.chordsLineContainer}>
-              {chordsLine}
+      {lines.map((line, lineIndex) => (
+        <View key={lineIndex} style={styles.lineContainer}>
+          {line.map((wordObj, wordIndex) => (
+            <View key={`word-${lineIndex}-${wordIndex}`} style={styles.wordContainer}>
+              <View style={styles.chordsLineContainer}>
+                {wordObj.chords.map((chord, chordIndex) => (
+                  <TextInput
+                    key={`chord-${lineIndex}-${wordIndex}-${chordIndex}`}
+                    style={styles.chord}
+                    value={chord}
+                    onChangeText={text => handleChordChange(text, lineIndex, wordIndex, chordIndex)}
+                  />
+                ))}
+                {/* <TouchableOpacity onPress={() => addChord(lineIndex, wordIndex)} style={styles.addChordButton}>
+                  <Text style={styles.addChordText}>+</Text>
+                </TouchableOpacity> */}
+              </View>
+              <TextInput
+                style={styles.lyrics}
+                value={wordObj.word}
+                onChangeText={text => handleWordChange(text, lineIndex, wordIndex)}
+              />
             </View>
-            <View style={styles.lyricsLineContainer}>
-              <Text style={styles.lyrics}>{line.lyrics}</Text>
-            </View>
-          </View>
-        );
-      })}
+          ))}
+        </View>
+      ))}
     </View>
   );
 };
@@ -59,41 +74,48 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 20,
+    padding: 15,
   },
   lyricsContainer: {
     flexDirection: "column",
   },
-  chordsLineContainer: {
+  lineContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    alignItems: "baseline",
+  },
+  chordsLineContainer: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    justifyContent: "flex-start",
     marginTop: 5
   },
-  lyricsLineContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "baseline",
-  },
   wordContainer: {
-    alignItems: "center",
     flexDirection: "column",
-    marginRight: 5,
-  },
-  chordContainer: {
-    backgroundColor: "#444",
-    padding: 4,
-    borderRadius: 4,
-    marginHorizontal: 2,
-    marginBottom: 5,
+    alignItems: "flex-start",
+    marginRight: 3,
+    justifyContent: "flex-end"
   },
   chord: {
-    fontSize: 16,
     fontWeight: "bold",
-    color: "#fff",
+    color: "#444",
+    textAlign: "center",
+    fontFamily: "monospace",
+    borderBottomWidth: 1,
+    marginBottom: 5,
   },
   lyrics: {
     fontSize: 18,
+    color: "#000",
+    fontFamily: "monospace",
+  },
+  addChordButton: {
+    backgroundColor: "#ddd",
+    borderRadius: 5,
+    padding: 2,
+    marginTop: 5,
+  },
+  addChordText: {
+    fontSize: 12,
     color: "#000",
   },
 });
