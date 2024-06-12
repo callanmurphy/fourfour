@@ -1,155 +1,175 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useLayoutEffect } from "react";
 import {
-  Text,
   View,
   ScrollView,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
+  TextInput,
+  Text,
+  TouchableOpacity,
 } from "react-native";
+import Icon from "react-native-vector-icons/Ionicons"; // Importing icons
+import { COLOURS } from "../config";
 
-const LyricsChordsDisplay = ({ lyricsAndChords, styles }) => {
-  const [lines, setLines] = useState(lyricsAndChords);
+const parseContent = (body) => {
+  if (!body) return [];
+  const lines = body.split("\n");
+  return lines.map((line) => {
+    const parts = line.split(/(\s+)/g); // Split by spaces to keep them
+    return parts.map((part) => {
+      if (
+        /^\(*[A-G][#b]?[mM]?\d*(\/[A-G][#b]?[mM]?\d*)?\)*$/.test(part.trim())
+      ) {
+        return { type: "chord", value: part };
+      }
+      return { type: "lyrics", value: part };
+    });
+  });
+};
 
-  const handleLyricsChange = (text, lineIndex) => {
-    const updatedLines = [...lines];
-    updatedLines[lineIndex].lyrics = text;
-    setLines(updatedLines);
-  };
+const EditableText = ({ body, onChangeBody, isEditing }) => {
+  const content = useMemo(() => parseContent(body), [body]);
 
-  const handleChordChange = (text, lineIndex, chordIndex) => {
-    const updatedLines = [...lines];
-    updatedLines[lineIndex].chords[chordIndex].chord = text;
-    setLines(updatedLines);
-  };
-
-  const handleChordPositionChange = (text, lineIndex, chordIndex) => {
-    const updatedLines = [...lines];
-    const position = parseInt(text, 10);
-    if (!isNaN(position)) {
-      updatedLines[lineIndex].chords[chordIndex].index = position;
-    }
-    setLines(updatedLines);
+  const handleTextChange = (newText) => {
+    onChangeBody(newText);
   };
 
   return (
     <View style={styles.lyricsContainer}>
-      {lines.map((line, lineIndex) => {
-        const chordsLine = [];
-        let previousIndex = 0;
-
-        line.chords.forEach((chord, chordIndex) => {
-          const spacesCount = Math.max(chord.index - previousIndex, 0);
-          const spaces = " ".repeat(spacesCount);
-          chordsLine.push(
-            <Text
-              key={`space-${lineIndex}-${chordIndex}`}
-              style={styles.chordPlaceholder}
-            >
-              {spaces}
-            </Text>
-          );
-          chordsLine.push(
-            <View
-              key={`chord-${lineIndex}-${chordIndex}`}
-              style={styles.chordContainer}
-            >
-              <TextInput
-                style={styles.chord}
-                value={chord.chord}
-                onChangeText={(text) =>
-                  handleChordChange(text, lineIndex, chordIndex)
-                }
-              />
-              <TextInput
-                style={styles.chordPosition}
-                value={chord.index.toString()}
-                keyboardType="numeric"
-                onChangeText={(text) =>
-                  handleChordPositionChange(text, lineIndex, chordIndex)
-                }
-              />
-            </View>
-          );
-          previousIndex = chord.index + chord.chord.length;
-        });
-
-        return (
+      {isEditing ? (
+        <TextInput
+          style={styles.editableText}
+          value={body}
+          onChangeText={handleTextChange}
+          multiline
+          autoFocus
+        />
+      ) : (
+        content.map((line, lineIndex) => (
           <View key={lineIndex} style={styles.lineContainer}>
-            <View style={styles.chordsLineContainer}>{chordsLine}</View>
-            <View style={styles.lyricsLineContainer}>
-              <TextInput
-                style={styles.lyrics}
-                value={line.lyrics}
-                onChangeText={(text) => handleLyricsChange(text, lineIndex)}
-                multiline
-              />
-            </View>
+            {line.map((part, partIndex) => (
+              <Text
+                key={partIndex}
+                style={part.type === "chord" ? styles.chord : styles.lyrics}
+              >
+                {part.value}
+              </Text>
+            ))}
           </View>
-        );
-      })}
+        ))
+      )}
     </View>
   );
 };
 
-export default function SongScreen({ route }) {
-  const { song } = route.params;
+export default function SongScreen({ route, navigation }) {
+  const { song } = route.params || {}; // Default to an empty object if route.params is undefined
+  const [body, setBody] = useState(song?.body || ""); // Default to an empty string if song.body is undefined
+  const [isEditing, setIsEditing] = useState(false);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () =>
+        isEditing ? (
+          <TouchableOpacity onPress={() => setIsEditing(false)}>
+            <Text style={styles.doneButtonText}>Done</Text>
+          </TouchableOpacity>
+        ) : null,
+    });
+  }, [navigation, isEditing]);
+
+  if (!song) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>No song data available.</Text>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <View style={styles.container}>
-        <LyricsChordsDisplay
-          lyricsAndChords={song.lyricsAndChords}
-          styles={styles}
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <EditableText
+          body={body}
+          onChangeBody={setBody}
+          isEditing={isEditing}
         />
-      </View>
-    </ScrollView>
+      </ScrollView>
+      {!isEditing && (
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => setIsEditing(true)}
+        >
+          <Icon name="create" size={30} color="#fff" />
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    backgroundColor: "#fff",
-  },
   container: {
     flex: 1,
-    padding: 20,
+    backgroundColor: "#fff",
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingTop: 15,
+    paddingHorizontal: 15,
+    paddingBottom: 70,
   },
   lyricsContainer: {
-    flexDirection: "column",
+    flexGrow: 1,
   },
-  chordsLineContainer: {
+  lineContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "baseline",
-    marginTop: 5,
-  },
-  lyricsLineContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "baseline",
-  },
-  wordContainer: {
-    alignItems: "center",
-    flexDirection: "column",
-    marginRight: 5,
-  },
-  chordContainer: {
-    backgroundColor: "#444",
-    padding: 4,
-    borderRadius: 4,
-    marginHorizontal: 2,
-    marginBottom: 5,
   },
   chord: {
-    fontSize: 16,
     fontWeight: "bold",
-    color: "#fff",
+    color: "#444",
+    textAlign: "center",
+    fontFamily: "monospace",
+    backgroundColor: "#e0e0e0",
+    padding: 2,
+    // marginVertical: 2,
   },
   lyrics: {
     fontSize: 18,
     color: "#000",
+    fontFamily: "monospace",
+  },
+  editableText: {
+    fontSize: 18,
+    color: "#000",
+    fontFamily: "monospace",
+    textAlignVertical: "top",
+    minHeight: "100%",
+    marginBottom: 200, // manual keyboard avoiding view
+  },
+  editButton: {
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    backgroundColor: COLOURS.theme,
+    borderRadius: 50,
+    padding: 15,
+    zIndex: 10,
+  },
+  doneButton: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  doneButtonText: {
+    fontSize: 20,
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  errorText: {
+    fontSize: 18,
+    color: "red",
+    textAlign: "center",
   },
 });
