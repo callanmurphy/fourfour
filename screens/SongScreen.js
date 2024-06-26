@@ -6,9 +6,12 @@ import {
   TextInput,
   Text,
   TouchableOpacity,
+  Animated,
+  PanResponder,
 } from "react-native";
 import Icon from "react-native-vector-icons/Ionicons"; // Importing icons
 import { COLOURS } from "../config";
+import DraggableChord from "../components/DraggableChord";
 
 const parseContent = (body) => {
   if (!body) return [];
@@ -26,11 +29,28 @@ const parseContent = (body) => {
   });
 };
 
-const EditableText = ({ body, onChangeBody, isEditing }) => {
-  const content = useMemo(() => parseContent(body), [body]);
-
+const EditableText = ({ body, onChangeBody, isEditing, setIsDragging }) => {
   const handleTextChange = (newText) => {
     onChangeBody(newText);
+  };
+
+  const [content, setContent] = useState(parseContent(body));
+
+  const moveChord = (index, dy) => {
+    const lineIndex = Math.floor(index / content[0].length);
+    const partIndex = index % content[0].length;
+    const newContent = [...content];
+    const line = newContent[lineIndex];
+    const chord = line[partIndex];
+
+    line.splice(partIndex, 1);
+
+    const newLineIndex = Math.min(
+      Math.max(lineIndex + Math.round(dy / 40), 0),
+      newContent.length - 1
+    );
+    newContent[newLineIndex].push(chord);
+    setContent(newContent);
   };
 
   return (
@@ -46,14 +66,22 @@ const EditableText = ({ body, onChangeBody, isEditing }) => {
       ) : (
         content.map((line, lineIndex) => (
           <View key={lineIndex} style={styles.lineContainer}>
-            {line.map((part, partIndex) => (
-              <Text
-                key={partIndex}
-                style={part.type === "chord" ? styles.chord : styles.lyrics}
-              >
-                {part.value}
-              </Text>
-            ))}
+            {line.map((part, partIndex) => {
+              const index = lineIndex * content[0].length + partIndex;
+              return part.type === "chord" ? (
+                <DraggableChord
+                  key={partIndex}
+                  chord={part}
+                  index={index}
+                  moveChord={moveChord}
+                  setIsDragging={setIsDragging}
+                />
+              ) : (
+                <Text key={partIndex} style={styles.lyrics}>
+                  {part.value}
+                </Text>
+              );
+            })}
           </View>
         ))
       )}
@@ -65,6 +93,7 @@ export default function SongScreen({ route, navigation }) {
   const { song } = route.params || {}; // Default to an empty object if route.params is undefined
   const [body, setBody] = useState(song?.body || ""); // Default to an empty string if song.body is undefined
   const [isEditing, setIsEditing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -87,11 +116,15 @@ export default function SongScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        scrollEnabled={!isDragging}
+      >
         <EditableText
           body={body}
           onChangeBody={setBody}
           isEditing={isEditing}
+          setIsDragging={setIsDragging}
         />
       </ScrollView>
       {!isEditing && (
@@ -124,15 +157,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "baseline",
-  },
-  chord: {
-    fontWeight: "bold",
-    color: "#444",
-    textAlign: "center",
-    fontFamily: "monospace",
-    backgroundColor: "#e0e0e0",
-    padding: 2,
-    // marginVertical: 2,
   },
   lyrics: {
     fontSize: 18,
