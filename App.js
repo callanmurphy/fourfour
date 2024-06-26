@@ -31,21 +31,21 @@ function LogoTitle() {
 const LibraryStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+const commonScreenOptions = {
+  headerStyle: {
+    backgroundColor: COLOURS.theme,
+  },
+  headerTintColor: "#fff",
+  headerTitleStyle: {
+    fontWeight: "bold",
+  },
+  headerBackTitleVisible: false,
+  headerTitleAlign: "center",
+};
+
 function LibraryStackScreen() {
   return (
-    <LibraryStack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: COLOURS.theme,
-        },
-        headerTintColor: "#fff",
-        headerTitleStyle: {
-          fontWeight: "bold",
-        },
-        headerBackTitleVisible: false,
-        headerTitleAlign: "center",
-      }}
-    >
+    <LibraryStack.Navigator screenOptions={commonScreenOptions}>
       <LibraryStack.Screen
         name="LibraryHome"
         component={LibraryScreen}
@@ -67,7 +67,6 @@ export default function App() {
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={({ route }) => ({
-          headerShown: false,
           tabBarIcon: ({ focused, color, size }) => {
             let iconName;
             if (route.name === "Search") {
@@ -84,10 +83,11 @@ export default function App() {
         <Tab.Screen
           name="Search"
           component={TestScreen}
-          // options={{
-          //   title: "Events",
-          //   headerTitle: (props) => <LogoTitle {...props} />,
-          // }}
+          options={{
+            title: "Search",
+            headerTitle: (props) => <LogoTitle {...props} />,
+            ...commonScreenOptions,
+          }}
         />
         <Tab.Screen
           name="Library"
@@ -98,6 +98,7 @@ export default function App() {
               tabBarStyle: {
                 display: routeName === "Song" ? "none" : "flex",
               },
+              headerShown: false,
             };
           }}
         />
