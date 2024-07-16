@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useLayoutEffect } from "react";
+import React, { useState, useCallback, useLayoutEffect } from "react";
 import {
   View,
   ScrollView,
@@ -6,37 +6,39 @@ import {
   TextInput,
   Text,
   TouchableOpacity,
-  Animated,
-  PanResponder,
+  KeyboardAvoidingView,
 } from "react-native";
-import Icon from "react-native-vector-icons/Ionicons"; // Importing icons
+import { useFocusEffect } from "@react-navigation/native";
+import Icon from "react-native-vector-icons/Ionicons";
 import { COLOURS } from "../config";
 import DraggableChord from "../components/DraggableChord";
 
 const parseContent = (body) => {
   if (!body) return [];
-  const lines = body.split("\n");
-  return lines.map((line) => {
-    const parts = line.split(/(\s+)/g); // Split by spaces to keep them
-    return parts.map((part) => {
-      if (
-        /^\(*[A-G][#b]?[mM]?\d*(\/[A-G][#b]?[mM]?\d*)?\)*$/.test(part.trim())
-      ) {
-        return { type: "chord", value: part };
-      }
-      return { type: "lyrics", value: part };
-    });
-  });
+  return body
+    .split("\n")
+    .map((line) =>
+      line
+        .split(/(\s+)/g)
+        .map((part) =>
+          /^\(*[A-G][#b]?[mM]?\d*(\/[A-G][#b]?[mM]?\d*)?\)*$/.test(part.trim())
+            ? { type: "chord", value: part }
+            : { type: "lyrics", value: part }
+        )
+    );
 };
 
 const EditableText = ({ body, onChangeBody, isEditing, setIsDragging }) => {
+  const [content, setContent] = useState(parseContent(body));
+  const [cursorPosition, setCursorPosition] = useState(null);
+  const [draggingChordIndex, setDraggingChordIndex] = useState(null);
+
   const handleTextChange = (newText) => {
     onChangeBody(newText);
+    setContent(parseContent(newText));
   };
 
-  const [content, setContent] = useState(parseContent(body));
-
-  const moveChord = (index, dy) => {
+  const moveChord = (index, dx, dy) => {
     const lineIndex = Math.floor(index / content[0].length);
     const partIndex = index % content[0].length;
     const newContent = [...content];
@@ -49,8 +51,23 @@ const EditableText = ({ body, onChangeBody, isEditing, setIsDragging }) => {
       Math.max(lineIndex + Math.round(dy / 40), 0),
       newContent.length - 1
     );
-    newContent[newLineIndex].push(chord);
+
+    const newPartIndex = Math.min(
+      Math.max(partIndex + Math.round(dx / 40), 0),
+      newContent[newLineIndex].length
+    );
+
+    newContent[newLineIndex].splice(newPartIndex, 0, chord);
     setContent(newContent);
+    setDraggingChordIndex(null); // Reset dragging state
+  };
+
+  const onDragging = (moveX, moveY) => {
+    const lineHeight = 40; // Assume a fixed line height
+    const charWidth = 20; // Assume a fixed character width
+    const lineIndex = Math.floor(moveY / lineHeight);
+    const partIndex = Math.floor(moveX / charWidth);
+    setCursorPosition({ lineIndex, partIndex });
   };
 
   return (
@@ -66,22 +83,38 @@ const EditableText = ({ body, onChangeBody, isEditing, setIsDragging }) => {
       ) : (
         content.map((line, lineIndex) => (
           <View key={lineIndex} style={styles.lineContainer}>
-            {line.map((part, partIndex) => {
-              const index = lineIndex * content[0].length + partIndex;
-              return part.type === "chord" ? (
+            {line.map((part, partIndex) =>
+              part.type === "chord" ? (
                 <DraggableChord
                   key={partIndex}
                   chord={part}
-                  index={index}
+                  index={lineIndex * content[0].length + partIndex}
                   moveChord={moveChord}
-                  setIsDragging={setIsDragging}
+                  setIsDragging={(isDragging) => {
+                    setIsDragging(isDragging);
+                    setDraggingChordIndex(
+                      isDragging
+                        ? lineIndex * content[0].length + partIndex
+                        : null
+                    );
+                  }}
+                  onDragging={onDragging}
+                  isDragging={
+                    draggingChordIndex ===
+                    lineIndex * content[0].length + partIndex
+                  }
                 />
               ) : (
                 <Text key={partIndex} style={styles.lyrics}>
                   {part.value}
                 </Text>
-              );
-            })}
+              )
+            )}
+            {cursorPosition?.lineIndex === lineIndex && (
+              <View
+                style={[styles.cursor, { left: cursorPosition.partIndex * 20 }]}
+              />
+            )}
           </View>
         ))
       )}
@@ -90,10 +123,16 @@ const EditableText = ({ body, onChangeBody, isEditing, setIsDragging }) => {
 };
 
 export default function SongScreen({ route, navigation }) {
-  const { song } = route.params || {}; // Default to an empty object if route.params is undefined
-  const [body, setBody] = useState(song?.body || ""); // Default to an empty string if song.body is undefined
+  const { song } = route.params || {};
+  const [body, setBody] = useState(song?.body || "");
   const [isEditing, setIsEditing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsDragging(false);
+    }, [])
+  );
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -115,7 +154,7 @@ export default function SongScreen({ route, navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         scrollEnabled={!isDragging}
@@ -135,7 +174,7 @@ export default function SongScreen({ route, navigation }) {
           <Icon name="create" size={30} color="#fff" />
         </TouchableOpacity>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -169,7 +208,7 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     textAlignVertical: "top",
     minHeight: "100%",
-    marginBottom: 200, // manual keyboard avoiding view
+    marginBottom: 200,
   },
   editButton: {
     position: "absolute",
@@ -178,12 +217,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLOURS.theme,
     borderRadius: 50,
     padding: 15,
-    zIndex: 10,
-  },
-  doneButton: {
-    position: "absolute",
-    top: 20,
-    right: 20,
     zIndex: 10,
   },
   doneButtonText: {
@@ -195,5 +228,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "red",
     textAlign: "center",
+  },
+  cursor: {
+    position: "absolute",
+    height: "100%",
+    width: 2,
+    backgroundColor: "blue",
+    left: 0,
   },
 });
