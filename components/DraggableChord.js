@@ -1,6 +1,5 @@
 import React, { useState, useRef } from "react";
 import { Animated, PanResponder, Text, StyleSheet } from "react-native";
-import Haptic from "react-native-haptic-feedback";
 
 const DraggableChord = ({
   chord,

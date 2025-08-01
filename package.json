@@ -10,20 +10,19 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
-    "@react-navigation/bottom-tabs": "^6.5.20",
-    "@react-navigation/native": "^6.1.17",
-    "@react-navigation/native-stack": "^6.9.26",
+    "@react-navigation/bottom-tabs": "^7.4.4",
+    "@react-navigation/native": "^7.1.16",
+    "@react-navigation/native-stack": "^7.3.23",
     "expo": "^53.0.20",
     "expo-status-bar": "~2.2.3",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "react-native": "0.79.5",
-    "react-native-haptic-feedback": "^2.2.0",
-    "react-native-vector-icons": "^10.1.0",
-    "react-native-web": "^0.20.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-native": "^0.79.5",
+    "react-native-vector-icons": "^10.3.0",
+    "react-native-web": "^0.21.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0"
+    "@babel/core": "^7.28.0"
   },
   "private": true
 }
